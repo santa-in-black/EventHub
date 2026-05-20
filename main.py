@@ -23,7 +23,6 @@ if 'erp_initialized' not in st.session_state:
         "Красная Площадь (Опен-эйр)": {"lat": 55.7539, "lon": 37.6208, "Адрес": "Красная площадь", "Дистанция_км": 1}
     }
     
-    # Реестры CRM и кадров
     st.session_state.orders = []
     st.session_state.drivers = [{"ФИО": "Григорий Орлов", "Транспорт": "Грузовой фургон 3.5т (Категория С)", "Статус": "Свободен"}]
     st.session_state.erp_initialized = True
@@ -35,7 +34,7 @@ st.caption("Сквозной учет: CRM -> Логистика (Карты) ->
 # --- СТАТИСТИКА В РЕАЛЬНОМ ВРЕМЕНИ (УПРАВЛЕНЧЕСКИЙ УЧЕТ) ---
 col_m1, col_m2, col_m3 = st.columns(3)
 with col_m1:
-    st.metric("Оборот в обработке (Москва)", f"{sum(x['Сумма'] for x in st.session_state.orders):,} ₽")
+    st.metric("Оборот в обработке (Москва)", f"{sum(int(x['Сумма']) for x in st.session_state.orders):,} ₽")
 with col_m2:
     st.metric("Оборудования на объектах", f"{len(st.session_state.inventory[st.session_state.inventory['Статус']=='В аренде'])} ед.")
 with col_m3:
@@ -51,13 +50,10 @@ with col_left:
         customer = st.text_input("Контрагент (CRM: Наименование юр. лица)", placeholder="ООО 'Ивент Продакшн'")
         selected_venue = st.selectbox("Концертная площадка (Авторасчет логистики):", list(st.session_state.venues.keys()))
         
-        # Умный выбор аппарата с моментальной подсказкой зависимостей
         eq_idx = st.selectbox("Выбор дорогого аппарата:", range(len(st.session_state.inventory)), 
-                              format_func=lambda x: f"{st.session_state.inventory.iloc[x]['Название']} ({st.session_state.inventory.iloc[x]['Цена/сутки']:,} ₽/сут)")
+                              format_func=lambda x: f"{st.session_state.inventory.iloc[x]['Название']} ({int(st.session_state.inventory.iloc[x]['Цена/сутки']):,} ₽/сут)")
         
         chosen_item = st.session_state.inventory.iloc[eq_idx]
-        
-        # ДИНАМИЧЕСКАЯ ПОДСКАЗКА (Контекстный инжиниринг прямо в форме)
         st.warning(chosen_item["Подсказка"])
         
         days = st.number_input("Срок проката (суток):", min_value=1, value=1)
@@ -69,16 +65,14 @@ with col_left:
         if not customer.strip():
             st.error("Ошибка CRM: Не указан контрагент.")
         else:
-            # Расчет логистики на основе координат площадки
             venue_data = st.session_state.venues[selected_venue]
-            dist = venue_data["Дистанция_км"]
-            # Формула расчета времени доставки (Москва: база 40 мин + 3 мин на км + коэф. пробок 1.3)
+            dist = float(venue_data["Дистанция_км"])
             delivery_time_min = int((40 + (dist * 3)) * 1.3)
             delivery_cost = int(dist * 150 + 5000) if delivery_needed else 0
             
-            total_price = (chosen_item["Цена/сутки"] * days) + delivery_cost
+            total_price = int(chosen_item["Цена/сутки"]) * int(days) + delivery_cost
             
-                       # Генерация сквозной транзакции с чистыми типами данных
+            # Принудительная очистка типов для JSON сериализации
             new_order = {
                 "ID": int(len(st.session_state.orders) + 1001),
                 "Клиент": str(customer),
@@ -93,18 +87,16 @@ with col_left:
             }
             
             st.session_state.orders.append(new_order)
-            # Обновляем складской статус
-            st.session_state.inventory.loc[st.session_state.inventory["ID"] == chosen_item["ID"], "Статус"] = "В аренде"
+            st.session_state.inventory.loc[st.session_state.inventory["ID"] == int(chosen_item["ID"]), "Статус"] = "В аренде"
             st.success(f"Сделка №{new_order['ID']} успешно проведена!")
 
 with col_right:
     st.subheader("📍 Мониторинг логистики на карте Москвы")
-    # Отображение интерактивной карты на основе координат площадок из базы данных
     map_data = pd.DataFrame.from_dict(st.session_state.venues, orient='index')
     st.map(map_data, latitude='lat', longitude='lon', zoom=10, use_container_width=True)
     st.caption("Точки — выбранные концертные залы. Система автоматически строит маршруты от центрального склада.")
 
-# --- НИЖНЯЯ ПАНЕЛЬ: ЮРИДИЧЕСКИЙ, БУХГАЛТЕРСКИЙ И 1С БЛОКИ ---
+# --- НИЖНЯЯ ПАНЕЛЬ: ПОДРАЗДЕЛЕНИЯ ---
 st.divider()
 st.subheader("🗂️ Сквозная детализация по отделам для последней сделки")
 
@@ -137,7 +129,6 @@ if st.session_state.orders:
         
     with tab_1c:
         st.markdown("### 🔄 Шина обмена: Зеркалирование в 1С:УНФ / 1С:Бухгалтерия")
-        st.write("Сформированный JSON пакет для автоматической выгрузки в 1С или сторонние CRM по Webhook:")
         
         one_c_packet = {
             "Document_Type": "Invoice_Reserve",
@@ -157,8 +148,8 @@ if st.session_state.orders:
     with tab_warehouse:
         st.markdown("### 🚚 Наряд на отгрузку и Транспортный лист")
         st.write(f"**Точка назначения:** {last_order['Площадка']} ({last_order['Адрес']})")
-        st.write(f"**Общий вес оборудования к погрузке:** {last_order['Вес_общий']} кг.")
-        st.write(f"**Расчетное время в пути (Москва):** ~{last_order['ВремяДоставки_мин']} минут.")
+        st.write(f"**Общий вес оборудования к погрузке:** {int(last_order['Вес_общий'])} кг.")
+        st.write(f"**Расчетное время в пути (Москва):** ~{int(last_order['ВремяДоставки_мин'])} минут.")
         st.write(f"**Назначенный водитель:** {st.session_state.drivers[0]['ФИО']} ({st.session_state.drivers[0]['Транспорт']})")
 else:
     st.info("💡 Оформите тестовую сделку в форме выше, чтобы запустить сквозной процесс управленческого и юридического учета.")
