@@ -42,7 +42,7 @@ with col_m3:
     st.metric("Активные суды / Претензии", "0 — Все договоры защищены холдом")
 
 # --- ДВЕ СЕКЦИИ: ПАНЕЛЬ ДЕЙСТВИЙ И КАРТА ЛОГИСТИКИ ---
-col_left, col_right = st.columns()
+col_left, col_right = st.columns(2)
 
 with col_left:
     st.subheader("📝 Новая Сделка: Сквозное оформление (Очередь + CRM + 1C)")
