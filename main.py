@@ -78,17 +78,17 @@ with col_left:
             
             total_price = (chosen_item["Цена/сутки"] * days) + delivery_cost
             
-            # Генерация сквозной транзакции
+                       # Генерация сквозной транзакции с чистыми типами данных
             new_order = {
-                "ID": len(st.session_state.orders) + 1001,
-                "Клиент": customer,
-                "Площадка": selected_venue,
-                "Адрес": venue_data["Адрес"],
-                "Аппарат": chosen_item["Название"],
-                "Серийный": chosen_item["Серийный №"],
-                "Сумма": total_price,
-                "ВремяДоставки_мин": delivery_time_min,
-                "Вес_общий": chosen_item["Вес_кг"],
+                "ID": int(len(st.session_state.orders) + 1001),
+                "Клиент": str(customer),
+                "Площадка": str(selected_venue),
+                "Адрес": str(venue_data["Адрес"]),
+                "Аппарат": str(chosen_item["Название"]),
+                "Серийный": str(chosen_item["Серийный №"]),
+                "Сумма": int(total_price),
+                "ВремяДоставки_мин": int(delivery_time_min),
+                "Вес_общий": int(chosen_item["Вес_кг"]),
                 "Дата": datetime.now().strftime("%Y-%m-%d %H:%M")
             }
             
