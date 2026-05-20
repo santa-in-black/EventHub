@@ -147,7 +147,7 @@ if st.session_state.orders:
             "Nomenclature": [{
                 "Name": last_order['Аппарат'],
                 "Serial": last_order['Серийный'],
-                "Price": last_order['Сумма']
+                "Price": int(last_order['Сумма'])
             }],
             "Status_1C": "Posted_Not_Paid"
         }
